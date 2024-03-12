@@ -1,9 +1,10 @@
 import sys
 import os
 import logging
-import time
+import datetime
 import readline
 import csv
+import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt, mpld3
 import numpy as np 
@@ -76,14 +77,22 @@ def main():
     logging.info('Shape of data in radar file is... {}'.format(sensors_dataset.shape))
 
     if program_arguments.environment_file is not None:
-        environment_information = []
-        with open(program_arguments.environment_file, newline='') as file_contents:
-            for row_index, environment_row in enumerate(csv.reader(file_contents)):
-                if row_index == 0 or row_index == 1: 
-                    continue            
-                environment_timestamp, environment_moisture \
-                = time.strptime(environment_row[0], "%m/%d/%y %H:%M"), environment_row[6]
-                environment_information.append((environment_timestamp, environment_moisture))
+        environment_information = pd.read_excel(program_arguments.environment_file).iloc[1:, :]
+        def environment_timestamp_to_datetime(environment_timestamp):
+            return datetime.datetime.strptime(environment_timestamp, "%m/%d/%y %H:%M")
+        def get_environment_information_around_timestamp(environment_information, center_datetime, leniency_timedelta):
+            closest_row, smallest_timedelta = None, None
+            for row_information in environment_information.iterrows():      
+                row_timestamp = row_information[1]['TIMESTAMP'] 
+                candidate_timedelta = center_datetime - row_timestamp
+                if abs(candidate_timedelta.total_seconds()) < leniency_timedelta.total_seconds():
+                    if (closest_row is None and smallest_timedelta is None) \
+                    or (abs(candidate_timedelta.total_seconds()) < smallest_timedelta.total_seconds()):
+                        closest_row, smallest_timedelta = row_information, candidate_timedelta
+            return closest_row
+        
+        logging.info('Shape of the environment file... {}'.format(environment_information.shape))
+        logging.info('Initial slice of environment file... {}'.format(environment_information.iloc[:2, :]))
 
     subplots_figure, subplots_ax = plt.subplots()
     subplots_ax.set_title('Radar Heatmap')
