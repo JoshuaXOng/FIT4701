@@ -72,6 +72,18 @@ def main():
     sensors_dataset = radar_file['data']
     def reoriente_sensor_data(sensors_data):
         return sensors_data.swapaxes(0, 1)[:][0].swapaxes(0, 1)
+    def get_radar_data_around_timestamp(radar_file, center_datetime, leniency_timedelta):
+        if radar_file['sample_times'].shape[0] != radar_file['data'].shape[0]:
+            logging.warning('Data and timestamps are not of the same length.')
+        
+        closest_data, smallest_timedelta = None, None
+        for data_index, data_timestamp in enumerate(radar_file['sample_times'][:]):
+            candidate_timedelta = center_datetime - datetime.datetime.fromtimestamp(data_timestamp)
+            if abs(candidate_timedelta.total_seconds()) < leniency_timedelta.total_seconds():
+                if (closest_data is None and smallest_timedelta is None) \
+                or (abs(candidate_timedelta.total_seconds()) < smallest_timedelta.total_seconds()):
+                    closest_data, smallest_timedelta = radar_file['data'][data_index], candidate_timedelta
+        return closest_data
 
     logging.info('Start timestamp in radar file is... {}'.format(start_timestamp))
     logging.info('Shape of data in radar file is... {}'.format(sensors_dataset.shape))
@@ -93,6 +105,19 @@ def main():
         
         logging.info('Shape of the environment file... {}'.format(environment_information.shape))
         logging.info('Initial slice of environment file... {}'.format(environment_information.iloc[:2, :]))
+
+        from sklearn.ensemble import RandomForestRegressor
+        from sklearn.linear_model import LinearRegression
+        model = RandomForestRegressor()
+        model = LinearRegression()
+        x = []
+        y = []
+        for i in range(0, 1000):
+            x.append([i])
+            y.append(i) 
+        print(x[:4], y[:4])
+        model.fit(x, y)    
+        print(model.predict([[6]]))
 
     subplots_figure, subplots_ax = plt.subplots()
     subplots_ax.set_title('Radar Heatmap')
