@@ -3,6 +3,7 @@ import os
 import logging
 import datetime
 import itertools
+import bisect 
 import argparse
 import readline
 import csv
@@ -86,14 +87,16 @@ def main():
         if radar_file['sample_times'].shape[0] != radar_file['data'].shape[0]:
             logging.warning('Data and timestamps are not of the same length.')
         
-        closest_data, smallest_timedelta = min(
-            zip(radar_file['data'][:], radar_file['sample_times'][:]), 
-            key=lambda x: abs((center_datetime - datetime.datetime.fromtimestamp(x[1])).total_seconds())
-        )
-        if abs((center_datetime - datetime.datetime.fromtimestamp(smallest_timedelta)).total_seconds()) \
+        radar_timestamps = list(map(lambda x: datetime.datetime.fromtimestamp(x), radar_file['sample_times'][:]))
+        candidate_indices = [bisect.bisect_left(radar_timestamps, center_datetime),
+            bisect.bisect_right(radar_timestamps, center_datetime)]
+        get_delta = lambda x: abs((center_datetime - x).total_seconds())
+        candidate_index = min(candidate_indices, key=lambda x: get_delta(radar_timestamps[x]))
+        if get_delta(radar_timestamps[candidate_index]) \
         >= leniency_timedelta.total_seconds():
             return None
-        return closest_data     
+
+        return radar_file['sample_times'][candidate_index]
 
     logging.info('Start timestamp in radar file is... {}'.format(start_timestamp))
     logging.info('Shape of data in radar file is... {}'.format(sensors_dataset.shape))
@@ -151,9 +154,10 @@ def main():
                 continue 
             
             radar_and_moisture.append((_environment_information, corresponding_radar))
-
-        print(len(radar_and_moisture))
             
+            if row_index == 366:
+                break
+
         moisture_model = LinearRegression()
         x = []
         y = []
@@ -220,6 +224,9 @@ def is_string_relative_numeric(string):
         return True 
     else:
         return False
+
+def get_sorted_iterator_of_radar_data(radar_file):
+    pass
 
 if __name__ == '__main__':
     main()
