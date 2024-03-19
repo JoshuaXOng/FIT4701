@@ -4,6 +4,7 @@ import logging
 import datetime
 import itertools
 import bisect 
+import pickle
 import argparse
 import readline
 import csv
@@ -96,7 +97,7 @@ def main():
         >= leniency_timedelta.total_seconds():
             return None
 
-        return radar_file['sample_times'][candidate_index]
+        return radar_file['data'][candidate_index]
 
     logging.info('Start timestamp in radar file is... {}'.format(start_timestamp))
     logging.info('Shape of data in radar file is... {}'.format(sensors_dataset.shape))
@@ -155,18 +156,21 @@ def main():
             
             radar_and_moisture.append((_environment_information, corresponding_radar))
             
-            if row_index == 366:
+            if row_index == 350:
                 break
-
+         
         moisture_model = LinearRegression()
-        x = []
-        y = []
-        for i in range(0, 1000):
-            x.append([i])
-            y.append(i) 
-        print(x[:4], y[:4])
-        moisture_model.fit(x, y)    
-        print(moisture_model.predict([[6]]))
+        moisture_model.fit(
+            np.array(list(map(lambda x: list(x[1][0]), radar_and_moisture))), 
+            np.array(list(map(lambda x: x[0][1]['Leaf Moisture'], radar_and_moisture))), 
+        )    
+        #print(list(map(lambda x: list(x[1][0]), radar_and_moisture)))
+        print(list(map(lambda x: x[0][1]['Leaf Moisture'], radar_and_moisture))[0])
+        print(moisture_model.predict([radar_and_moisture[0][1][0]]))
+        print(moisture_model.get_params())
+        s = pickle.dumps(moisture_model)
+        l = pickle.loads(s)
+        print(l.predict([radar_and_moisture[0][1][0]]))
         return 
 
     subplots_figure, subplots_ax = plt.subplots()
