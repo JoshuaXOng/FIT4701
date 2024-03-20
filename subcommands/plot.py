@@ -14,6 +14,7 @@ import numpy as np
 import h5py
 from subcommands.common import validate_arguments_for_radar_file
 from data_files.radar_h5 import reoriente_sensor_data
+from miscellaneous import is_string_relative_numeric
 
 RADAR_RANGE_MATPLOTLIB_IMSHOW = {
     'vmin': 0,
@@ -52,7 +53,7 @@ def run_plot_subcommand(program_arguments):
 def run_plotting_loop(program_arguments, initial_region, radar_file):
     region_start, region_width = initial_region
 
-    subplots_figure, subplots_ax = plt.subplots()
+    subplots_figure, subplots_ax = plt.subplots(tight_layout=True)
     subplots_ax.set_title('Radar Heatmap')
     subplots_ax.set_ylabel('Distance Level')
     subplots_ax.set_xlabel('Time')
@@ -62,7 +63,7 @@ def run_plotting_loop(program_arguments, initial_region, radar_file):
         sensors_data = reoriente_sensor_data(
             radar_file['data'][region_start:region_start + region_width])
     subplots_figure.colorbar(
-        subplots_ax.imshow(sensors_data, **RADAR_RANGE_MATPLOTLIB_IMSHOW),
+        subplots_ax.imshow(sensors_data, aspect='auto', **RADAR_RANGE_MATPLOTLIB_IMSHOW),
     )
     plt.show(block=False)
     plt.draw()
@@ -98,6 +99,6 @@ def run_plotting_loop(program_arguments, initial_region, radar_file):
         else:
             sensors_data = reoriente_sensor_data(radar_file['data'][:]) 
 
-        subplots_ax.imshow(sensors_data, **RADAR_RANGE_MATPLOTLIB_IMSHOW)
+        subplots_ax.imshow(sensors_data, aspect='auto', **RADAR_RANGE_MATPLOTLIB_IMSHOW)
         plt.draw()
         plt.pause(0.25)
