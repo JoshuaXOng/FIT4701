@@ -27,6 +27,10 @@ def main():
         help='Path to the h5 radar file.')
     model_parser.add_argument('-e', '--environment_file',
         help='Path to the csv that contains the moisture data.')
+    model_parser.add_argument('-g', '--guess_for',
+        help='Path to a file containing radar data to be fed to the model.')
+    model_parser.add_argument('-m', '--model',
+        help='Path to a file containing the model.')
     model_parser.set_defaults(func=run_model_subcommand)
 
     program_arguments = argument_parser.parse_args()

@@ -4,7 +4,10 @@ import logging
 import datetime
 import itertools
 import pickle
+import uuid
 import argparse
+import ast
+import json
 import readline
 import csv
 import pandas as pd
@@ -18,6 +21,21 @@ from data_files.radar_h5 import get_radar_file_start_timestamp, get_radar_file_e
 from data_files.environments_excel import get_environment_information_start_timestamp, get_environment_information_end_timestamp 
 
 def run_model_subcommand(program_arguments):
+    logging.info('Path to file containing radar data feed model... {}'.format(program_arguments.guess_for))
+    logging.info('Path to model file is... {}'.format(program_arguments.model))
+    if program_arguments.guess_for is not None and program_arguments.model is not None:
+        if not os.path.isfile(program_arguments.model):
+            raise Exception('The model file is invalid... {}'.format(program_arguments.model))
+
+        with open(program_arguments.model, 'rb') as save_file:
+            moisture_model = pickle.load(save_file)
+        
+        with open(program_arguments.guess_for, 'r') as guess_for:
+            _guess_for = [json.loads(guess_for.read())]
+        print(moisture_model.predict(_guess_for))
+
+        return
+
     validate_arguments_for_radar_file(program_arguments)
 
     logging.info('Path to environments file is... {}'.format(program_arguments.environment_file)) 
@@ -60,19 +78,18 @@ def run_model_subcommand(program_arguments):
         
         if row_index == 350:
             break
+    #print(radar_and_moisture[0][1][0])
      
     moisture_model = LinearRegression()
     moisture_model.fit(
         np.array(list(map(lambda x: list(x[1][0]), radar_and_moisture))), 
         np.array(list(map(lambda x: x[0][1]['Leaf Moisture'], radar_and_moisture))), 
     )    
-    #print(list(map(lambda x: list(x[1][0]), radar_and_moisture)))
-    print(list(map(lambda x: x[0][1]['Leaf Moisture'], radar_and_moisture))[0])
-    print(moisture_model.predict([radar_and_moisture[0][1][0]]))
-    print(moisture_model.get_params())
-    s = pickle.dumps(moisture_model)
-    l = pickle.loads(s)
-    print(l.predict([radar_and_moisture[0][1][0]]))
+
+    file_name = 'moisture_model_{}_{}.pkl'.format(datetime.datetime.now(), uuid.uuid4())
+    with open(file_name, 'wb') as save_file:
+        pickle.dump(moisture_model, save_file) 
+        print('Pickled model to {}'.format(file_name))
 
 def find_greatest_overlap(radar_file, environment_information):
     radar_start, radar_end = get_radar_file_start_timestamp(radar_file), get_radar_file_end_timestamp(radar_file)
