@@ -43,11 +43,10 @@ imagesc(data);
 
 % Adjusting x-axis tick labels and ticks
 numTicks = numel(dateNumbers);
-ticksToDisplay = linspace(1, numTicks, 10); % Adjust the number 5 for the desired number of ticks
+ticksToDisplay = linspace(1, numTicks, 10); 
 xticks(ticksToDisplay);
-xticklabels(datestr(dateNumbers(round(ticksToDisplay)), 'yyyy-mm-dd HH:MM:SS')); % Customize date format as per your preference
-
-colormap('jet'); % Choose a colormap (e.g., 'jet', 'hot', 'parula', etc.)
+xticklabels(datestr(dateNumbers(round(ticksToDisplay)), 'yyyy-mm-dd HH:MM:SS'));
+colormap('jet'); 
 colorbar; % Add colorbar to indicate intensity
 title('Shoe-based Sensor Data Heatmap');
 xlabel('Samples');
