@@ -17,6 +17,8 @@ def main():
     plot_parser = subcommand_parsers.add_parser('plot')
     plot_parser.add_argument('-r', '--radar_h5_file', 
         help='Path to the h5 radar file.')
+    plot_parser.add_argument('-e', '--environment_file',
+        help='Path to the csv that contains the moisture data.')
     plot_parser.add_argument('-i', '--initial_region', 
         help='Slice of initial viewing region of radar data, e.g., '
         'can exclude or set like \'3000,400\' (no relative start)')

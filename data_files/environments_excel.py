@@ -19,3 +19,12 @@ def get_environment_information_around_timestamp(environment_information, center
             or (abs(candidate_timedelta.total_seconds()) < smallest_timedelta.total_seconds()):
                 closest_row, smallest_timedelta = row_information, candidate_timedelta
     return closest_row
+
+def get_environment_information_between_timestamps(environment_information, start_timestamp, end_timestamp):
+    def allow_between_start_and_end(position_and_row):
+        if position_and_row[1]['TIMESTAMP'] > start_timestamp \
+        and position_and_row[1]['TIMESTAMP'] < end_timestamp:
+            return True
+        else:
+            return False 
+    return list(filter(allow_between_start_and_end, list(environment_information.iterrows())))

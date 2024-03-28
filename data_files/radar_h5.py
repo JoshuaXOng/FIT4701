@@ -28,3 +28,8 @@ def get_radar_data_around_timestamp(radar_file, center_datetime, leniency_timede
         return None
 
     return radar_file['data'][candidate_index]
+
+def get_radar_data_timestamp_from_index(radar_file, radar_index):
+    return datetime.datetime.fromtimestamp(
+        radar_file['sample_times'][radar_index]
+    ) 

@@ -1,4 +1,5 @@
 data/
+*.pkl
 *.swp
 *.sw?
 
