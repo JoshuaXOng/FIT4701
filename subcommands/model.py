@@ -21,8 +21,6 @@ import data_files.common
 from data_files.radar_h5 import get_radar_data_around_timestamp 
 
 def run_model_subcommand(program_arguments):
-    preprocessed_data_file = 'radar_and_moisture_preprocessed.pkl'
-
     logging.info('Path to file containing radar data feed model... {}'.format(program_arguments.guess_for))
     logging.info('Path to model file is... {}'.format(program_arguments.model))
     if program_arguments.guess_for is not None and program_arguments.model is not None:
@@ -36,7 +34,7 @@ def run_model_subcommand(program_arguments):
             _guess_for = [json.loads(guess_for.read())]
         print("Moisture prediction:", moisture_model.predict(_guess_for))
 
-        with open(preprocessed_data_file, 'rb') as save_file:
+        with open(data_files.common.PREPROCESSED_DATA_FILE, 'rb') as save_file:
             radar_and_moisture = pickle.load(save_file)
         logging.info("Accuracy: {}".format(moisture_model.score(
             np.array(list(map(lambda x: list(x[1][0]), radar_and_moisture))), 
@@ -61,32 +59,7 @@ def run_model_subcommand(program_arguments):
     logging.info('Shape of the environment file... {}'.format(environment_information.shape))
     logging.info('Initial slice of environment file... {}'.format(environment_information.iloc[:2, :]))
 
-    latest_start, earliest_end = data_files.common.find_greatest_overlap(radar_file, environment_information) 
-    if not os.path.isfile(preprocessed_data_file):
-        radar_and_moisture = []
-        for row_index, _environment_information in enumerate(environment_information.iterrows()):   
-            logging.debug('At index {} of {}'.format(row_index, environment_information.shape[0]))
-
-            environment_timestamp = _environment_information[1]['TIMESTAMP'] 
-            
-            if environment_timestamp < latest_start or environment_timestamp > earliest_end:
-                logging.debug('Skipping finding corresponding radar data, latest start is... {}, earliest end is... {} and '
-                'environment timestamp is... {}'.format(latest_start, earliest_end, environment_timestamp))
-                continue
-            
-            corresponding_radar = get_radar_data_around_timestamp(radar_file, environment_timestamp, datetime.timedelta(seconds=1))
-            
-            if corresponding_radar is None:
-                logging.warning('No corresponding radar data found for environment data of timestamp... {}'.format(environment_timestamp)) 
-                continue 
-            
-            radar_and_moisture.append((_environment_information, corresponding_radar))
-        with open(preprocessed_data_file, 'wb') as save_file:
-            pickle.dump(radar_and_moisture, save_file)
-            logging.info('Pickled processed radar and moisture to {}.'.format(preprocessed_data_file))
-    else:
-        with open(preprocessed_data_file, 'rb') as save_file:
-            radar_and_moisture = pickle.load(save_file)
+    radar_and_moisture = data_files.common.get_overlap_as_aggregated()
      
     moisture_model = LinearRegression()
     moisture_model.fit(

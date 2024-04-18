@@ -20,8 +20,7 @@ from miscellaneous import is_string_relative_numeric
 
 RADAR_RANGE_MATPLOTLIB_IMSHOW = {
     'vmin': 0,
-    # TODO
-    'vmax': 50 
+    'vmax': 500
 }
 
 def run_plot_subcommand(program_arguments):
@@ -76,6 +75,8 @@ def run_plotting_loop(program_arguments, initial_region, radar_file, environment
     #
     # How deep is the 414 level?
     #
+    # How does the heatmap of 0% moisture soil look like?
+    #
     # Perhaps the question to be asked is / the research project is: can moisture be related to 
     # mmWave Radar placed flush against ground surface.
     # *there is an existing literature piece that is very similar
@@ -91,11 +92,11 @@ def run_plotting_loop(program_arguments, initial_region, radar_file, environment
     from sklearn.decomposition import PCA
     from sklearn.preprocessing import StandardScaler
     pca_model = PCA(n_components=2) 
-    xt = Pipeline([('scaler', StandardScalar()), ('pca', pca_model)]).fit_transform(reoriente_sensor_data(radar_file['data'][:20000].transpose()))
+    xt = Pipeline([('scaler', StandardScaler()), ('pca', pca_model)]).fit_transform(reoriente_sensor_data(radar_file['data'][:20000].transpose()))
     plt.scatter(xt[:,0], xt[:,1])
     plt.show()
     
-    pca_model.fit(x)
+    # pca_model.fit(x)
 
     subplots_figure, subplots_ax = plt.subplots(ncols=2, tight_layout=True)
     subplots_ax[0].set_title('Radar Heatmap')
@@ -115,16 +116,21 @@ def run_plotting_loop(program_arguments, initial_region, radar_file, environment
         sensors_data = reoriente_sensor_data(
             radar_file['data'][region_start:region_start + region_width]
         )
+        # TODO
+        sensors_data = list(list(sensors_data)[50])
+        # print(sensors_data)
         _environment_data = get_environment_information_between_timestamps(
             environment_information, 
             get_radar_data_timestamp_from_index(radar_file, region_start),
             get_radar_data_timestamp_from_index(radar_file, region_start + region_width)
         )
-    sensors_data = pca_model.transform(sensors_data.transpose()).transpose()
-    subplots_figure.colorbar(
-        subplots_ax[0].imshow(sensors_data, aspect='auto', **RADAR_RANGE_MATPLOTLIB_IMSHOW),
-    )
+    # sensors_data = pca_model.transform(sensors_data.transpose()).transpose()
+    # subplots_figure.colorbar(
+        # subplots_ax[0].imshow(sensors_data, aspect='auto', **RADAR_RANGE_MATPLOTLIB_IMSHOW),
+    # )
+    subplots_ax[0].plot(sensors_data),
     _environment_data = list(map(lambda position_and_row: position_and_row[1]['Leaf Moisture'], _environment_data))
+    print(_environment_data)
     subplots_ax[1].plot(_environment_data)
     plt.show(block=False)
     plt.draw()
@@ -168,7 +174,7 @@ def run_plotting_loop(program_arguments, initial_region, radar_file, environment
                 get_radar_data_timestamp_from_index(radar_file, 0),
                 get_radar_data_timestamp_from_index(radar_file, -1)
             )
-        sensors_data = pca_model.transform(sensors_data.transpose()).transpose()
+        # sensors_data = pca_model.transform(sensors_data.transpose()).transpose()
         _environment_data = list(map(lambda position_and_row: position_and_row[1]['Leaf Moisture'], _environment_data))
 
         subplots_ax[0].imshow(sensors_data, aspect='auto', **RADAR_RANGE_MATPLOTLIB_IMSHOW)
