@@ -32,12 +32,12 @@ def main():
         plot_subcommands = plot_parser.add_subparsers(title='subcommands')
 
         versus_parser = plot_subcommands.add_parser('versus')
+        versus_parser.add_argument('-p', '--power-levels', 
+            help='Whether or not, and to determine which levels of power'
+            'to plot.')
         versus_parser.set_defaults(func=run_versus_subcommand)
 
         pca_parser = plot_subcommands.add_parser('pca')
-        plot_parser.add_argument('-p', '--power-level', 
-            help='Whether or not, and to determine which levels of power'
-            'to plot.')
         pca_parser.set_defaults(func=run_pca_subcommand)
     _()
 

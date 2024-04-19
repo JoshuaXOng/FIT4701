@@ -35,17 +35,38 @@ def run_versus_subcommand(program_arguments):
     logging.info('Shape of the environment file... {}'.format(environment_information.shape))
     logging.info('Initial slice of environment file... {}'.format(environment_information.iloc[:2, :]))
 
+    power_levels = None
+    if program_arguments.power_levels is not None:
+        power_levels = []
+        for power_level in program_arguments.power_levels.split(','):
+            if power_level.isdigit(): power_levels.append(int(power_level))
+            else: logging.warning('Power level input appears to be incorrect')
+    
+    if power_levels == []:
+        raise Exception('The input of power levels cannot be equivalent to an empty string')
+    
     radar_and_moisture = data_files.common.get_overlap_as_aggregated(radar_file, environment_information)
-    def to_radar_number_and_summed_moisture_entry(radar_entry, moisture_entry):
-        return (radar_entry[1]['Leaf Moisture'], sum(moisture_entry[0]))
+    def to_radar_number_and_summed_moisture_entry(moisture_entry, radar_entry):
+        if power_levels is None:
+            radar_entry = radar_entry[0]
+        else:
+            _radar_entry = []
+            for level_index, level_intensity in enumerate(radar_entry[0]):
+                if level_index + 1 in power_levels:
+                    _radar_entry.append(level_intensity)
+            radar_entry = _radar_entry
+        return (moisture_entry[1]['Leaf Moisture'], sum(radar_entry))
     summed_radar_and_moisture = list(map(
         lambda both_entries: to_radar_number_and_summed_moisture_entry(both_entries[0], both_entries[1]), 
         radar_and_moisture
     ))
 
+    plt.title('Radar Level Versus Moisture')
+    plt.xlabel('Moisture')
+    plt.ylabel('Radar Level')
     plt.scatter(
         list(map(lambda x: x[0], summed_radar_and_moisture)), 
         list(map(lambda x: x[1], summed_radar_and_moisture))
     )
-    
+
     plt.show() 
