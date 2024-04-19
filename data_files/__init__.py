@@ -37,7 +37,7 @@ def join_environment_and_radar_with_tolerance(radar_file, environment_data, join
     
     return environment_and_radar
         
-PREPROCESSED_DATA_FILE = 'radar_and_moisture_preprocessed.pkl'
+PREPROCESSED_DATA_FILE = 'data/radar_and_moisture_preprocessed.pkl'
 def get_overlap_as_aggregated(radar_file, environment_information):
     latest_start, earliest_end = find_greatest_overlap(radar_file, environment_information) 
 
