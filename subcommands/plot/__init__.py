@@ -1,9 +1,4 @@
-import sys
-import os
 import logging
-import datetime
-import itertools
-import pickle
 import argparse
 import readline
 import csv
@@ -12,11 +7,33 @@ import matplotlib
 import matplotlib.pyplot as plt, mpld3
 import numpy as np 
 import h5py
-from subcommands.common import validate_arguments_for_radar_file, validate_arguments_for_environments_file
-import data_files.common 
+import subcommands.plot.versus
+import subcommands.plot.pca
+import subcommands
+from subcommands import validate_arguments_for_radar_file, validate_arguments_for_environments_file
+import data_files
 from data_files.radar_h5 import reoriente_sensor_data, get_radar_data_timestamp_from_index
 from data_files.environments_excel import get_environment_information_between_timestamps
 from miscellaneous import is_string_relative_numeric
+
+def attach_plot_subcommand(root_subcommands):
+    plot_parser = root_subcommands.add_parser('plot')
+    plot_parser.add_argument('-r', '--radar-h5-file', 
+        help='Path to the h5 radar file.')
+    plot_parser.add_argument('-e', '--environment-file',
+        help='Path to the csv that contains the moisture data.')
+    plot_parser.add_argument('-i', '--initial-region', 
+        help='Slice of initial viewing region of radar data, e.g., '
+        'can exclude or set like \'3000,400\' (no relative start)')
+    plot_parser.set_defaults(func=run_plot_subcommand)
+    plot_subcommands = plot_parser.add_subparsers(title='subcommands')
+    
+    subcommands.plot.versus.attach_versus_subcommand(plot_subcommands)
+    subcommands.plot.pca.attach_pca_subcommand(plot_subcommands)
+
+def validate_plot_arguments(program_arguments):
+    validate_arguments_for_radar_file(program_arguments)
+    validate_arguments_for_environments_file(program_arguments)
 
 RADAR_RANGE_MATPLOTLIB_IMSHOW = {
     'vmin': 0,
@@ -24,19 +41,15 @@ RADAR_RANGE_MATPLOTLIB_IMSHOW = {
 }
 
 def run_plot_subcommand(program_arguments):
-    validate_arguments_for_radar_file(program_arguments)
+    validate_plot_arguments(program_arguments)
 
     radar_file = h5py.File(program_arguments.radar_h5_file, 'r')
     start_timestamp = radar_file['timestamp'][()]
     sensors_dataset = radar_file['data']
-
     logging.info('Start timestamp in radar file is... {}'.format(start_timestamp))
     logging.info('Shape of data in radar file is... {}'.format(sensors_dataset.shape))
 
-    validate_arguments_for_environments_file(program_arguments)
-
     environment_information = pd.read_excel(program_arguments.environment_file).iloc[1:, :]
-
     logging.info('Shape of the environment file... {}'.format(environment_information.shape))
     logging.info('Initial slice of environment file... {}'.format(environment_information.iloc[:2, :]))
 
@@ -62,42 +75,6 @@ def run_plot_subcommand(program_arguments):
 def run_plotting_loop(program_arguments, initial_region, radar_file, environment_information):
     region_start, region_width = initial_region
     
-    #
-    # TODO
-    # 
-    # Levels are not independent. As in, neighbouring levels will likely show similar values to 
-    # one another, they are measuring 'spatially' similar levels.
-    #
-    # The material of the ground will vary in real life.
-    # The material of the ground affects reflection.
-    # A material has a moisture level- voids will with water.
-    # Level 1 to 414 might not even be of the same material, and density, etc.
-    #
-    # How deep is the 414 level?
-    #
-    # How does the heatmap of 0% moisture soil look like?
-    #
-    # Perhaps the question to be asked is / the research project is: can moisture be related to 
-    # mmWave Radar placed flush against ground surface.
-    # *there is an existing literature piece that is very similar
-    #
-    # Are the levels addative? Probably not right? Wouldn't intensity from lower levels count for more. As
-    # to resurface they must pass through more material.
-    # Moisture is an average accross the volume- but it may infact be skewed.
-    #
-    # PCA not good for the initial one dataset, could be better for identifying terrains
-    #
-
-    from sklearn.pipeline import Pipeline
-    from sklearn.decomposition import PCA
-    from sklearn.preprocessing import StandardScaler
-    pca_model = PCA(n_components=2) 
-    xt = Pipeline([('scaler', StandardScaler()), ('pca', pca_model)]).fit_transform(reoriente_sensor_data(radar_file['data'][:20000].transpose()))
-    plt.scatter(xt[:,0], xt[:,1])
-    plt.show()
-    
-    # pca_model.fit(x)
-
     subplots_figure, subplots_ax = plt.subplots(ncols=2, tight_layout=True)
     subplots_ax[0].set_title('Radar Heatmap')
     subplots_ax[0].set_ylabel('Distance Level')
@@ -181,3 +158,4 @@ def run_plotting_loop(program_arguments, initial_region, radar_file, environment
         subplots_ax[1].plot(_environment_data)
         plt.draw()
         plt.pause(0.25)
+
