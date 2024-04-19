@@ -35,6 +35,9 @@ def main():
         versus_parser.set_defaults(func=run_versus_subcommand)
 
         pca_parser = plot_subcommands.add_parser('pca')
+        plot_parser.add_argument('-p', '--power-level', 
+            help='Whether or not, and to determine which levels of power'
+            'to plot.')
         pca_parser.set_defaults(func=run_pca_subcommand)
     _()
 
@@ -60,6 +63,10 @@ def main():
         'was... {}'.format(program_arguments.log_level))
     logging.basicConfig(level=program_arguments.log_level, format='%(asctime)s '
     '- %(name)s - %(levelname)s - %(message)s')
+    
+    # TODO: Validate and dispatch from commands here
+    # if program_arguments.func is run_plot_subcommand:
+    #    program_arguments.func(program_arguments.environment_file) 
 
     program_arguments.func(program_arguments)
 

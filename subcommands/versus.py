@@ -18,11 +18,6 @@ from data_files.radar_h5 import reoriente_sensor_data, get_radar_data_timestamp_
 from data_files.environments_excel import get_environment_information_between_timestamps
 from miscellaneous import is_string_relative_numeric
 
-RADAR_RANGE_MATPLOTLIB_IMSHOW = {
-    'vmin': 0,
-    'vmax': 500
-}
-
 def run_versus_subcommand(program_arguments):
     validate_arguments_for_radar_file(program_arguments)
 
