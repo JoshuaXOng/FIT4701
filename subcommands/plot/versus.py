@@ -24,11 +24,15 @@ def attach_versus_subcommand(plot_subcommands):
     versus_parser.add_argument('-p', '--power-levels', 
         help='Whether or not, and to determine which levels of power'
         'to plot.')
+    versus_parser.add_argument('-x', '--export-dir', 
+        help='If specified, will save the plot image to the supplied directory')
     versus_parser.set_defaults(func=run_versus_subcommand)
     
 def validate_versus_subcommand(program_arguments):
     subcommands.plot.validate_plot_arguments(program_arguments) 
     # TODO: Check between 1 and 414 
+    if program_arguments.export_dir is not None and not os.path.isdir(program_arguments.export_dir):
+        raise Exception("Value of export directory does not point to an actual directory.")
 
 def run_versus_subcommand(program_arguments):
     validate_versus_subcommand(program_arguments)
@@ -54,6 +58,15 @@ def run_versus_subcommand(program_arguments):
         raise Exception('The input of power levels cannot be equivalent to an empty string')
     
     radar_and_moisture = data_files.get_overlap_as_aggregated(radar_file, environment_information)
+    grouped_by_moisture = itertools.groupby(
+        radar_and_moisture,
+        lambda radar_and_moisture: radar_and_moisture[0][1]['Leaf Moisture']
+    )
+    def to_radar_number_and_summed_moisture_entry_for_group(grouped_entry):
+        running_sum = 0
+        for index, (moisture_entry, radar_entry) in enumerate(grouped_entry[1]):
+            running_sum += to_radar_number_and_summed_moisture_entry(moisture_entry, radar_entry)[1]
+        return (grouped_entry[0], running_sum / (index + 1)) 
     def to_radar_number_and_summed_moisture_entry(moisture_entry, radar_entry):
         if power_levels is None:
             radar_entry = radar_entry[0]
@@ -65,16 +78,23 @@ def run_versus_subcommand(program_arguments):
             radar_entry = _radar_entry
         return (moisture_entry[1]['Leaf Moisture'], sum(radar_entry))
     summed_radar_and_moisture = list(map(
-        lambda both_entries: to_radar_number_and_summed_moisture_entry(both_entries[0], both_entries[1]), 
-        radar_and_moisture
+        lambda grouped_entry: to_radar_number_and_summed_moisture_entry_for_group(grouped_entry), 
+        grouped_by_moisture 
     ))
+    
+    summed_radar_and_moisture = sorted(summed_radar_and_moisture, key=lambda summed_radar_and_moisture: summed_radar_and_moisture[0])
 
     plt.title('Radar Level Versus Moisture')
     plt.xlabel('Moisture')
     plt.ylabel('Radar Level')
-    plt.scatter(
+    plt.plot(
         list(map(lambda x: x[0], summed_radar_and_moisture)), 
         list(map(lambda x: x[1], summed_radar_and_moisture))
     )
 
-    plt.show() 
+    if program_arguments.export_dir is not None:
+        plt.savefig(os.path.join(program_arguments.export_dir, "radar_versus_moisture_p={}".format(
+            program_arguments.power_levels
+        )))
+    else:
+        plt.show()
