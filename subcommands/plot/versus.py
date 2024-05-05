@@ -58,42 +58,61 @@ def run_versus_subcommand(program_arguments):
         raise Exception('The input of power levels cannot be equivalent to an empty string')
     
     radar_and_moisture = data_files.get_overlap_as_aggregated(radar_file, environment_information)
-    grouped_by_moisture = itertools.groupby(
-        radar_and_moisture,
-        lambda radar_and_moisture: radar_and_moisture[0][1]['Leaf Moisture']
+
+    radar_and_moisture_grouped_by_moisture = sorted(
+        map(
+            lambda x: (x[0], list(x[1])),
+            itertools.groupby(
+                radar_and_moisture,
+                lambda radar_and_moisture: radar_and_moisture[0][1]['Leaf Moisture']
+            )
+        ),
+        key=lambda x: x[0]
     )
-    def to_radar_number_and_summed_moisture_entry_for_group(grouped_entry):
-        running_sum = 0
-        for index, (moisture_entry, radar_entry) in enumerate(grouped_entry[1]):
-            running_sum += to_radar_number_and_summed_moisture_entry(moisture_entry, radar_entry)[1]
-        return (grouped_entry[0], running_sum / (index + 1)) 
-    def to_radar_number_and_summed_moisture_entry(moisture_entry, radar_entry):
-        if power_levels is None:
-            radar_entry = radar_entry[0]
+    def produce_radar_versus_moisture_lines(radar_and_moisture_grouped_by_moisture, power_levels, aggregate_or_individual):
+        from copy import deepcopy
+        radar_and_moisture = []
+        get_average = lambda x: np.add.reduce(x, axis=0) / len(x) 
+        for group_index, (moisture_percentage, radar_and_moisture_entry) in enumerate(radar_and_moisture_grouped_by_moisture):
+            radar_and_moisture.append((moisture_percentage, get_average(list(radar_and_moisture_entry)[0][1])))
+
+        radar_versus_moisture_lines = [] 
+
+        if aggregate_or_individual == "aggregate":
+            def aggregate_radar_levels(radar_intensities):
+                aggregated_radar = 0
+                for power_level in (power_levels if power_levels is not None else range(1, 415)):
+                    aggregated_radar += radar_intensities[power_level - 1] 
+                return aggregated_radar 
+            radar_versus_moisture_lines.append((
+                list(map(lambda x: x[0], radar_and_moisture)),
+                list(map(lambda x: aggregate_radar_levels(x[1]), radar_and_moisture)),
+            ))
+        elif aggregate_or_individual == "individual":
+            for power_level in (power_levels if power_levels is not None else range(1, 415)):
+                moisture_percentages = list(map(lambda x: x[0], radar_and_moisture))
+                radar_intensities = list(map(lambda x: x[1][power_level - 1], radar_and_moisture))
+                radar_versus_moisture_lines.append((moisture_percentages, radar_intensities)) 
         else:
-            _radar_entry = []
-            for level_index, level_intensity in enumerate(radar_entry[0]):
-                if level_index + 1 in power_levels:
-                    _radar_entry.append(level_intensity)
-            radar_entry = _radar_entry
-        return (moisture_entry[1]['Leaf Moisture'], sum(radar_entry))
-    summed_radar_and_moisture = list(map(
-        lambda grouped_entry: to_radar_number_and_summed_moisture_entry_for_group(grouped_entry), 
-        grouped_by_moisture 
-    ))
-    
-    summed_radar_and_moisture = sorted(summed_radar_and_moisture, key=lambda summed_radar_and_moisture: summed_radar_and_moisture[0])
+            raise Exception("Invalid choice for aggregate or invididual.") 
+        
+        return radar_versus_moisture_lines
+    radar_versus_moisture_lines = produce_radar_versus_moisture_lines(radar_and_moisture_grouped_by_moisture, power_levels, "individual")
 
     plt.title('Radar Level Versus Moisture')
     plt.xlabel('Moisture')
     plt.ylabel('Radar Level')
-    plt.plot(
-        list(map(lambda x: x[0], summed_radar_and_moisture)), 
-        list(map(lambda x: x[1], summed_radar_and_moisture))
-    )
+    def plot_radar_versus_moisture_lines(radar_versus_moisture_lines):
+        for radar_versus_moisture_line in radar_versus_moisture_lines:
+            plt.plot(
+                radar_versus_moisture_line[0], 
+                radar_versus_moisture_line[1], 
+                linewidth=0.5
+            )
+    plot_radar_versus_moisture_lines(radar_versus_moisture_lines)
 
     if program_arguments.export_dir is not None:
-        plt.savefig(os.path.join(program_arguments.export_dir, "radar_versus_moisture_p={}".format(
+        plt.savefig(os.path.join(program_arguments.export_dir, "radar_versus_moisture_p={}__individual".format(
             program_arguments.power_levels
         )))
     else:
