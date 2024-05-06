@@ -114,7 +114,7 @@ def run_versus_subcommand(program_arguments):
         subplots_figure.subplots_adjust(top=0.85)
         for line_index, radar_versus_moisture_line in enumerate(radar_versus_moisture_lines):
             sub_ax = subplots_ax[floor(line_index / subplot_width), line_index % subplot_width]
-            sub_ax.set_title("Line Number {}".format(line_index + 1), fontsize=10)
+            sub_ax.set_title("Radar versus Moisture (Level {})".format(line_index + 1), fontsize=10)
             sub_ax.tick_params(axis='both', which='major', labelsize=10)
             sub_ax.plot(
                 radar_versus_moisture_line[0], 
