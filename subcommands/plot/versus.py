@@ -99,16 +99,32 @@ def run_versus_subcommand(program_arguments):
         return radar_versus_moisture_lines
     radar_versus_moisture_lines = produce_radar_versus_moisture_lines(radar_and_moisture_grouped_by_moisture, power_levels, "individual")
 
-    plt.title('Radar Level Versus Moisture')
-    plt.xlabel('Moisture')
-    plt.ylabel('Radar Level')
     def plot_radar_versus_moisture_lines(radar_versus_moisture_lines):
-        for radar_versus_moisture_line in radar_versus_moisture_lines:
-            plt.plot(
+        from math import floor, ceil
+        subplot_width = 5
+        subplot_height = ceil(len(radar_versus_moisture_lines) / subplot_width)
+        subplots_figure, subplots_ax = plt.subplots(
+            ncols=subplot_width, 
+            nrows=subplot_height,
+            tight_layout=True
+        )
+        # subplots_figure.suptitle('Radar Level Versus Moisture')
+        subplots_figure.set_figwidth(40)
+        subplots_figure.set_figheight(125)
+        subplots_figure.subplots_adjust(top=0.85)
+        for line_index, radar_versus_moisture_line in enumerate(radar_versus_moisture_lines):
+            sub_ax = subplots_ax[floor(line_index / subplot_width), line_index % subplot_width]
+            sub_ax.set_title("Line Number {}".format(line_index + 1), fontsize=10)
+            sub_ax.tick_params(axis='both', which='major', labelsize=10)
+            sub_ax.plot(
                 radar_versus_moisture_line[0], 
                 radar_versus_moisture_line[1], 
-                linewidth=0.5
+                linewidth=1
             )
+        for line_index in range(line_index + 1, subplot_width * subplot_height):
+            sub_ax = subplots_ax[floor(line_index / subplot_width), line_index % subplot_width]
+            sub_ax.remove()
+            
     plot_radar_versus_moisture_lines(radar_versus_moisture_lines)
 
     if program_arguments.export_dir is not None:
