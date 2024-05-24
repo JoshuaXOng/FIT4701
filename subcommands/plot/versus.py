@@ -97,24 +97,31 @@ def run_versus_subcommand(program_arguments):
             raise Exception("Invalid choice for aggregate or invididual.") 
         
         return radar_versus_moisture_lines
-    radar_versus_moisture_lines = produce_radar_versus_moisture_lines(radar_and_moisture_grouped_by_moisture, power_levels, "individual")
+    radar_versus_moisture_lines = produce_radar_versus_moisture_lines(radar_and_moisture_grouped_by_moisture, power_levels, "aggregate")
+    best_fitter = np.poly1d(np.polyfit(radar_versus_moisture_lines[0][0], radar_versus_moisture_lines[0][1], 1))
+    a = radar_versus_moisture_lines[0][0]
+    b = best_fitter(radar_versus_moisture_lines[0][0])
+    radar_versus_moisture_lines.append((a, b))
 
     def plot_radar_versus_moisture_lines(radar_versus_moisture_lines):
         from math import floor, ceil
-        subplot_width = 5
-        subplot_height = ceil(len(radar_versus_moisture_lines) / subplot_width)
+        #subplot_width = 5
+        subplot_width = 1
+        #subplot_height = ceil(len(radar_versus_moisture_lines) / subplot_width)
+        subplot_height = 1
         subplots_figure, subplots_ax = plt.subplots(
             ncols=subplot_width, 
             nrows=subplot_height,
             tight_layout=True
         )
-        # subplots_figure.suptitle('Radar Level Versus Moisture')
-        subplots_figure.set_figwidth(40)
-        subplots_figure.set_figheight(125)
+        subplots_figure.suptitle('Radar Level Versus Moisture')
+        subplots_figure.set_figwidth(20)
+        subplots_figure.set_figheight(40)
         subplots_figure.subplots_adjust(top=0.85)
         for line_index, radar_versus_moisture_line in enumerate(radar_versus_moisture_lines):
-            sub_ax = subplots_ax[floor(line_index / subplot_width), line_index % subplot_width]
-            sub_ax.set_title("Radar versus Moisture (Level {})".format(line_index + 1), fontsize=10)
+            # sub_ax = subplots_ax[floor(line_index / subplot_width), line_index % subplot_width]
+            sub_ax = subplots_ax
+            # sub_ax.set_title("Radar versus Moisture (Level {})".format(line_index + 1), fontsize=10)
             sub_ax.tick_params(axis='both', which='major', labelsize=10)
             sub_ax.plot(
                 radar_versus_moisture_line[0], 
@@ -122,13 +129,13 @@ def run_versus_subcommand(program_arguments):
                 linewidth=1
             )
         for line_index in range(line_index + 1, subplot_width * subplot_height):
-            sub_ax = subplots_ax[floor(line_index / subplot_width), line_index % subplot_width]
+            sub_ax = subplots_ax
             sub_ax.remove()
             
     plot_radar_versus_moisture_lines(radar_versus_moisture_lines)
 
     if program_arguments.export_dir is not None:
-        plt.savefig(os.path.join(program_arguments.export_dir, "radar_versus_moisture_p={}__individual".format(
+        plt.savefig(os.path.join(program_arguments.export_dir, "radar_versus_moisture__fitted_3".format(
             program_arguments.power_levels
         )))
     else:
