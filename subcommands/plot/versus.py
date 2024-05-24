@@ -115,8 +115,8 @@ def run_versus_subcommand(program_arguments):
             tight_layout=True
         )
         subplots_figure.suptitle('Radar Level Versus Moisture')
-        subplots_figure.set_figwidth(20)
-        subplots_figure.set_figheight(40)
+        # subplots_figure.set_figwidth(20)
+        # subplots_figure.set_figheight(40)
         subplots_figure.subplots_adjust(top=0.85)
         for line_index, radar_versus_moisture_line in enumerate(radar_versus_moisture_lines):
             # sub_ax = subplots_ax[floor(line_index / subplot_width), line_index % subplot_width]
@@ -135,7 +135,7 @@ def run_versus_subcommand(program_arguments):
     plot_radar_versus_moisture_lines(radar_versus_moisture_lines)
 
     if program_arguments.export_dir is not None:
-        plt.savefig(os.path.join(program_arguments.export_dir, "radar_versus_moisture__fitted_3".format(
+        plt.savefig(os.path.join(program_arguments.export_dir, "radar_versus_moisture__fitted_1".format(
             program_arguments.power_levels
         )))
     else:
