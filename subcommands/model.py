@@ -74,7 +74,7 @@ def run_model_subcommand(program_arguments):
     logging.info('Shape of the environment file... {}'.format(environment_information.shape))
     logging.info('Initial slice of environment file... {}'.format(environment_information.iloc[:2, :]))
 
-    radar_and_moisture = data_files.get_overlap_as_aggregated()
+    radar_and_moisture = data_files.get_overlap_as_aggregated(radar_file, environment_information)
      
     moisture_model = LinearRegression()
     moisture_model.fit(
@@ -86,4 +86,3 @@ def run_model_subcommand(program_arguments):
     with open(file_name, 'wb') as save_file:
         pickle.dump(moisture_model, save_file) 
         print('Pickled model to {}'.format(file_name))
-
