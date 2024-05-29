@@ -48,22 +48,26 @@ def run_model_subcommand(program_arguments):
     logging.info('Path to file containing radar data feed model... {}'.format(program_arguments.guess_for))
     logging.info('Path to model file is... {}'.format(program_arguments.model))
     if program_arguments.guess_for is not None and program_arguments.model is not None:
-        with open(program_arguments.model, 'rb') as save_file:
-            moisture_model = pickle.load(save_file)
-        
-        with open(program_arguments.guess_for, 'r') as guess_for:
-            _guess_for = [json.loads(guess_for.read())]
-        print("Moisture prediction:", moisture_model.predict(_guess_for))
+        perform_guess(program_arguments)
+    else:
+        perform_training(program_arguments)
 
-        with open(data_files.PREPROCESSED_DATA_FILE, 'rb') as save_file:
-            radar_and_moisture = pickle.load(save_file)
-        logging.info("Accuracy: {}".format(moisture_model.score(
-            np.array(list(map(lambda x: list(x[1][0]), radar_and_moisture))), 
-            np.array(list(map(lambda x: x[0][1]['Leaf Moisture'], radar_and_moisture))), 
-        )))
+def perform_guess(program_arguments):
+    with open(program_arguments.model, 'rb') as save_file:
+        moisture_model = pickle.load(save_file)
+    
+    with open(program_arguments.guess_for, 'r') as guess_for:
+        _guess_for = [json.loads(guess_for.read())]
+    print("Moisture prediction:", moisture_model.predict(_guess_for))
 
-        return
+    with open(data_files.PREPROCESSED_DATA_FILE, 'rb') as save_file:
+        radar_and_moisture = pickle.load(save_file)
+    logging.info("Accuracy: {}".format(moisture_model.score(
+        np.array(list(map(lambda x: list(x[1][0]), radar_and_moisture))), 
+        np.array(list(map(lambda x: x[0][1]['Leaf Moisture'], radar_and_moisture))), 
+    )))
 
+def perform_training(program_arguments):
     radar_file = h5py.File(program_arguments.radar_h5_file, 'r')
     start_timestamp = radar_file['timestamp'][()]
     sensors_dataset = radar_file['data']
