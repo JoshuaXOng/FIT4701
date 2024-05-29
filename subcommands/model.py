@@ -55,7 +55,11 @@ def run_model_subcommand(program_arguments):
 def perform_guess(program_arguments):
     with open(program_arguments.model, 'rb') as save_file:
         moisture_model = pickle.load(save_file)
-    
+   
+    [band_start, band_end] = program_arguments.model[
+        program_arguments.model.find("(") + 1:program_arguments.model.find(")")
+    ].split(", ")
+
     with open(program_arguments.guess_for, 'r') as guess_for:
         _guess_for = [json.loads(guess_for.read())]
     print("Moisture prediction:", moisture_model.predict(_guess_for))
@@ -63,7 +67,7 @@ def perform_guess(program_arguments):
     with open(data_files.PREPROCESSED_DATA_FILE, 'rb') as save_file:
         radar_and_moisture = pickle.load(save_file)
     logging.info("Accuracy: {}".format(moisture_model.score(
-        np.array(list(map(lambda x: list(x[1][0]), radar_and_moisture))), 
+        np.array(list(map(lambda x: list(x[1][0][int(band_start):int(band_end)]), radar_and_moisture))), 
         np.array(list(map(lambda x: x[0][1]['Leaf Moisture'], radar_and_moisture))), 
     )))
 
@@ -80,13 +84,18 @@ def perform_training(program_arguments):
 
     radar_and_moisture = data_files.get_overlap_as_aggregated(radar_file, environment_information)
      
-    moisture_model = LinearRegression()
-    moisture_model.fit(
-        np.array(list(map(lambda x: list(x[1][0]), radar_and_moisture))), 
-        np.array(list(map(lambda x: x[0][1]['Leaf Moisture'], radar_and_moisture))), 
-    )    
+    moisture_models = [
+        (LinearRegression(), (0, 40)),
+        (LinearRegression(), (40, 60)),
+        (LinearRegression(), (60, 414)),
+    ]
+    for moisture_model, levels_band in moisture_models:
+        moisture_model.fit(
+                np.array(list(map(lambda x: list(x[1][0][levels_band[0]:levels_band[1]]), radar_and_moisture))), 
+            np.array(list(map(lambda x: x[0][1]['Leaf Moisture'], radar_and_moisture))), 
+        )    
 
-    file_name = 'moisture_model_{}_{}.pkl'.format(datetime.datetime.now(), uuid.uuid4())
-    with open(file_name, 'wb') as save_file:
-        pickle.dump(moisture_model, save_file) 
-        print('Pickled model to {}'.format(file_name))
+        file_name = 'moisture_model_{}_{}_{}.pkl'.format(levels_band, datetime.datetime.now(), uuid.uuid4())
+        with open(file_name, 'wb') as save_file:
+            pickle.dump(moisture_model, save_file) 
+            print('Pickled model to {}'.format(file_name))
