@@ -1,0 +1,5 @@
+data/radar_and_moisture_preprocessed.backup.pkl filter=lfs diff=lfs merge=lfs -text
+data/radar_and_moisture_preprocessed.pkl filter=lfs diff=lfs merge=lfs -text
+data/radar_to_guess_for.txt filter=lfs diff=lfs merge=lfs -text
+data/20231030.h5 filter=lfs diff=lfs merge=lfs -text
+data/20231030_radarfoot_box_data.xlsx filter=lfs diff=lfs merge=lfs -text
