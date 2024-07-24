@@ -293,6 +293,7 @@ dependencies = [
  "embedded-hal 0.2.7",
  "nucleo-f446re",
  "panic-probe",
+ "rtt-target",
  "stm32f4xx-hal",
  "switch-hal",
 ]
