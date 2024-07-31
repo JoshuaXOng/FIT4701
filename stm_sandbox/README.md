@@ -1,3 +1,5 @@
+`ACC_RSS_LIBS=$(pwd)/acconeer cargo run`
+
 Useful links for knowledge:
 - https://github.com/schteve/nucleo-f446re/tree/v0.1.0
 - https://github.com/stm32-rs/stm32f4xx-hal

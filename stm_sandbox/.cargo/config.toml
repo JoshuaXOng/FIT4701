@@ -10,5 +10,5 @@ rustflags = [
 ]
 
 [build]
-target = "thumbv7em-none-eabi"      # Cortex-M4 and Cortex-M7 (no FPU)
-# target = "thumbv7em-none-eabihf"    # Cortex-M4F and Cortex-M7F (with FPU)
+# target = "thumbv7em-none-eabi"      # Cortex-M4 and Cortex-M7 (no FPU)
+target = "thumbv7em-none-eabihf"    # Cortex-M4F and Cortex-M7F (with FPU)
