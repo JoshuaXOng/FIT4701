@@ -1,6 +1,8 @@
 #![no_std]
 #![no_main]
 
+mod adapter;
+
 use core::time::Duration;
 
 use defmt::*;
@@ -37,35 +39,92 @@ bind_interrupts!(struct Irqs{
 
 const BLE_GAP_DEVICE_NAME_LENGTH: u8 = 7;
 
+extern crate alloc;
+use talc::{ClaimOnOom, Span, Talc, Talck};
+extern crate tinyrlibc;
+use tinyrlibc as _;
+static mut ARENA: [u8; 10000] = [0; 10000];
+#[global_allocator]
+static ALLOCATOR: Talck<spin::Mutex<()>, ClaimOnOom> = Talc::new(unsafe {
+    // if we're in a hosted environment, the Rust runtime may allocate before
+    // main() is called, so we need to initialize the arena automatically
+    ClaimOnOom::new(Span::from_const_array(core::ptr::addr_of!(ARENA)))
+})
+.lock();
+use embassy_stm32::time::Hertz;
+use embassy_stm32::spi::Spi;
+use embassy_stm32::dma::NoDma;
+use embassy_stm32::gpio::Output;
+use embassy_stm32::gpio::Level;
+use embassy_stm32::gpio::Speed;
+use embassy_time::Delay;
+use embedded_hal_bus::spi::ExclusiveDevice;
+use embassy_stm32::peripherals::SPI1;
+use embassy_stm32::peripherals::PA4;
+use core::cell::RefCell;
+use crate::adapter::SpiAdapter;
+use embassy_stm32::exti::ExtiInput;
+use embassy_stm32::gpio::Input;
+use embassy_stm32::gpio::Pull;
+use a121_rs::radar::Radar;
+use embassy_time::Timer;
+type SpiDeviceMutex = ExclusiveDevice<Spi<'static, embassy_stm32::mode::Blocking>, Output<'static>, Delay>;
+static mut SPI_DEVICE: Option<RefCell<SpiAdapter<SpiDeviceMutex>>> = None;
+
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
-    /*
-        How to make this work:
-
-        - Obtain a NUCLEO-STM32WB55 from your preferred supplier.
-        - Download and Install STM32CubeProgrammer.
-        - Download stm32wb5x_FUS_fw.bin, stm32wb5x_BLE_Mac_802_15_4_fw.bin, and Release_Notes.html from
-          gh:STMicroelectronics/STM32CubeWB@2234d97/Projects/STM32WB_Copro_Wireless_Binaries/STM32WB5x
-        - Open STM32CubeProgrammer
-        - On the right-hand pane, click "firmware upgrade" to upgrade the st-link firmware.
-        - Once complete, click connect to connect to the device.
-        - On the left hand pane, click the RSS signal icon to open "Firmware Upgrade Services".
-        - In the Release_Notes.html, find the memory address that corresponds to your device for the stm32wb5x_FUS_fw.bin file
-        - Select that file, the memory address, "verify download", and then "Firmware Upgrade".
-        - Once complete, in the Release_Notes.html, find the memory address that corresponds to your device for the
-          stm32wb5x_BLE_Mac_802_15_4_fw.bin file. It should not be the same memory address.
-        - Select that file, the memory address, "verify download", and then "Firmware Upgrade".
-        - Select "Start Wireless Stack".
-        - Disconnect from the device.
-        - Run this example.
-
-        Note: extended stack versions are not supported at this time. Do not attempt to install a stack with "extended" in the name.
-    */
-
+    info!("Initializing peripherals");
     let mut config = embassy_stm32::Config::default();
     config.rcc = WPAN_DEFAULT;
     let p = embassy_stm32::init(config);
-    info!("Hello World!");
+
+    info!("Initializing XE121");
+    let exclusive_device = {
+        let xe121_spi = {
+            let mut spi_configuration = embassy_stm32::spi::Config::default();
+            spi_configuration.frequency = Hertz(3_000_000);
+            Spi::new_blocking(
+                p.SPI1,
+                p.PA5, // SCK
+                p.PA7, // MOSI
+                p.PA6, // MISO
+                spi_configuration,
+            )
+        };
+
+        let chip_select = Output::new(p.PA4, Level::High, Speed::VeryHigh);
+        ExclusiveDevice::new(xe121_spi, chip_select, Delay)
+    };
+
+    unsafe { SPI_DEVICE = Some(RefCell::new(SpiAdapter::new(exclusive_device))) };
+    let spi_mut_ref = unsafe { SPI_DEVICE.as_mut().unwrap() };
+
+    info!("RSS Version: {}", a121_rs::radar::rss_version());
+
+    let interrupt = ExtiInput::new(p.PC12, p.EXTI12, Pull::Up);
+    let enable = Output::new(p.PA0, Level::Low, Speed::VeryHigh);
+    let mut radar = Radar::new(1, spi_mut_ref.get_mut(), interrupt, enable, Delay).await;
+    info!("Radar enabled");
+
+    let mut buffer = [0u8; 2560];
+    let mut calibration = loop {
+        buffer.fill(0);
+        if let Ok(calibration) = radar.calibrate().await {
+            if let Ok(()) = calibration.validate_calibration() {
+                info!("Calibration is valid");
+                break calibration;
+            } else {
+                warn!("Calibration is invalid");
+                warn!("Calibration result: {:?}", calibration);
+            }
+        } else {
+            warn!("Calibration failed");
+        }
+        Timer::after(embassy_time::Duration::from_millis(1)).await;
+    };
+    info!("Calibration complete!");
+
+    let mut radar = radar.prepare_sensor(&mut calibration).unwrap();
 
     let config = Config::default();
     let mut mbox = TlMbox::init(p.IPCC, Irqs, config);
@@ -192,6 +251,22 @@ async fn main(_spawner: Spawner) {
                 Event::Vendor(vendor_event) => match vendor_event {
                     VendorEvent::AttReadPermitRequest(read_req) => {
                         defmt::info!("read request received {}, allowing", read_req);
+                        let mut buffer = [0u8; 256 * 3];
+                        if let Err(e) = radar.measure(&mut buffer).await {
+                            info!("Error... {}", e);
+                        } else {
+                            info!("Data... {}", buffer);
+                        }
+                        mbox.ble_subsystem.update_characteristic_value(&UpdateCharacteristicValueParameters {
+                            service_handle: ble_context.service_handle,
+                            characteristic_handle: ble_context.chars.read,
+                            offset: 0,
+                            value: &buffer[0..4]
+                        }).await.unwrap();
+                        
+                        let response = mbox.ble_subsystem.read().await;
+                        defmt::warn!("{}", response);
+
                         mbox.ble_subsystem.allow_read(read_req.conn_handle).await
                     }
                     VendorEvent::AttWritePermitRequest(write_req) => {
@@ -291,7 +366,7 @@ pub async fn init_gatt_services(ble_subsystem: &mut Ble) -> Result<BleContext, (
         service_handle,
         Uuid::Uuid16(0x501),
         CharacteristicProperty::READ,
-        Some(b"Hello from embassy!"),
+        Some(b"Hello aa bbsda from embassy!"),
     )
     .await?;
 
